@@ -105,6 +105,21 @@ pub trait ReleaseUpdate {
     /// Flag indicating if the user shouldn't be prompted to confirm an update
     fn no_confirm(&self) -> bool;
 
+    /// Flag indicating if the idftiy the target platform,default is true
+    fn idty_target_platform(&self) -> bool {
+        return true;
+    }
+
+    //all replce the source dir to dst dir
+    fn all_replce(&self) -> bool {
+        return false;
+    }
+    /// action before the update start
+    fn before_update(&self) -> () {}
+
+    ///action after the update have finished
+    fn after_update(&self) -> () {}
+
     /// Styling for progress information if `show_download_progress` is set (see `indicatif::ProgressStyle`)
     fn progress_style(&self) -> Option<ProgressStyle>;
 
@@ -166,10 +181,14 @@ pub trait ReleaseUpdate {
                 self.get_release_version(ver)?
             }
         };
-
-        let target_asset = release.asset_for(&target).ok_or_else(|| {
-            format_err!(Error::Release, "No asset found for target: `{}`", target)
-        })?;
+        let target_asset: ReleaseAsset;
+        if self.idty_target_platform() {
+            target_asset = release.asset_for(&target).ok_or_else(|| {
+                format_err!(Error::Release, "No asset found for target: `{}`", target)
+            })?;
+        } else {
+            target_asset = release.assets[0].clone();
+        }
 
         let bin_install_path = self.bin_install_path();
         let bin_name = self.bin_name();
@@ -228,10 +247,14 @@ pub trait ReleaseUpdate {
 
         print_flush(show_output, "Replacing binary file... ")?;
         let tmp_file = tmp_dir.path().join(&format!("__{}_backup", bin_name));
+        self.before_update();
         Move::from_source(&new_exe)
             .replace_using_temp(&tmp_file)
-            .to_dest(&bin_install_path)?;
+            .to_dest(&bin_install_path, self.all_replce())?;
+
+        self.after_update();
         println(show_output, "Done");
+
         Ok(UpdateStatus::Updated(release))
     }
 }

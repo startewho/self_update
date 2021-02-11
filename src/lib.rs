@@ -131,6 +131,9 @@ fn update() -> Result<(), Box<::std::error::Error>> {
 
 pub use tempfile::TempDir;
 
+extern crate fs_extra;
+use fs_extra::dir::*;
+
 #[cfg(feature = "compression-flate2")]
 use either::Either;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -552,23 +555,29 @@ impl<'a> Move<'a> {
     }
 
     /// Move source file to specified destination
-    pub fn to_dest(&self, dest: &path::Path) -> Result<()> {
-        match self.temp {
-            None => {
-                fs::rename(self.source, dest)?;
-            }
-            Some(temp) => {
-                if dest.exists() {
-                    fs::rename(dest, temp)?;
-                    if let Err(e) = fs::rename(self.source, dest) {
-                        fs::rename(temp, dest)?;
-                        return Err(Error::from(e));
-                    }
-                } else {
+    pub fn to_dest(&self, dest: &path::Path, all_replace: bool) -> Result<()> {
+        if all_replace {
+            let options = CopyOptions::new();
+            fs_extra::dir::move_dir(self.temp.unwrap(), dest, &options).unwrap_or(0);
+        } else {
+            match self.temp {
+                None => {
                     fs::rename(self.source, dest)?;
                 }
-            }
-        };
+                Some(temp) => {
+                    if dest.exists() {
+                        fs::rename(dest, temp)?;
+                        if let Err(e) = fs::rename(self.source, dest) {
+                            fs::rename(temp, dest)?;
+                            return Err(Error::from(e));
+                        }
+                    } else {
+                        fs::rename(self.source, dest)?;
+                    }
+                }
+            };
+        }
+
         Ok(())
     }
 }

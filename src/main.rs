@@ -59,12 +59,16 @@ fn run() -> Result<(), Box<dyn ::std::error::Error>> {
 pub fn main()->std::io::Result<()> {
     use std::env;
     let path =  env::current_exe()?.parent().unwrap().join("info.log");
+  
+    let  config=ConfigBuilder::new().set_time_to_local(true).build();
+
     CombinedLogger::init(
         vec![
-            TermLogger::new(LevelFilter::Warn, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
-            WriteLogger::new(LevelFilter::Info, Config::default(), File::create(&path).unwrap()),
+            TermLogger::new(LevelFilter::Warn, config.clone(), TerminalMode::Mixed, ColorChoice::Auto),
+            WriteLogger::new(LevelFilter::Info, config.clone(), File::create(&path).unwrap()),
         ]
     ).unwrap();
+    
     if let Err(e) = run() {
         println!("[ERROR] {}", e);
         ::std::process::exit(1);

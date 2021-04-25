@@ -8,6 +8,8 @@ use std::path::PathBuf;
 
 use crate::{confirm, errors::*, version, Download, Extract, Move, Status};
 
+
+
 /// Release asset information
 #[derive(Clone, Debug, Default)]
 pub struct ReleaseAsset {
@@ -130,6 +132,7 @@ pub trait ReleaseUpdate {
     /// confirmation from the user
     fn update(&self) -> Result<Status> {
         let current_version = self.current_version();
+        
         self.update_extended()
             .map(|s| s.into_status(current_version))
     }
@@ -139,45 +142,30 @@ pub trait ReleaseUpdate {
         let current_version = self.current_version();
         let target = self.target();
         let show_output = self.show_output();
-        println(show_output, &format!("Checking target-arch... {}", target));
-        println(
-            show_output,
-            &format!("Checking current version... v{}", current_version),
-        );
-
+    
         let release = match self.target_version() {
             None => {
-                print_flush(show_output, "Checking latest released version... ")?;
+            
                 let release = self.get_latest_release()?;
                 {
-                    println(show_output, &format!("v{}", release.version));
-
-                    if !version::bump_is_greater(&current_version, &release.version)? {
-                        return Ok(UpdateStatus::UpToDate);
+                    
+                    if !crate::version::bump_is_greater(&current_version, &release.version)? {
+                        return Ok(crate::update::UpdateStatus::UpToDate);
                     }
 
-                    println(
-                        show_output,
-                        &format!(
-                            "New release found! v{} --> v{}",
-                            current_version, release.version
-                        ),
-                    );
+                   
                     let qualifier =
-                        if version::bump_is_compatible(&current_version, &release.version)? {
+                        if crate::version::bump_is_compatible(&current_version, &release.version)? {
                             ""
                         } else {
                             "*NOT* "
                         };
-                    println(
-                        show_output,
-                        &format!("New release is {}compatible", qualifier),
-                    );
+                 
                 }
                 release
             }
             Some(ref ver) => {
-                println(show_output, &format!("Looking for tag: {}", ver));
+              
                 self.get_release_version(ver)?
             }
         };
@@ -201,7 +189,7 @@ pub trait ReleaseUpdate {
             println!("\nThe new release will be downloaded/extracted and the existing binary will be replaced.");
         }
         if prompt_confirmation {
-            confirm("Do you want to continue? [Y/n] ")?;
+            crate::confirm("Do you want to continue? [Y/n] ")?;
         }
 
         let tmp_dir_parent = if cfg!(windows) {
@@ -214,10 +202,10 @@ pub trait ReleaseUpdate {
             .prefix(&format!("{}_download", bin_name))
             .tempdir_in(tmp_dir_parent)?;
         let tmp_archive_path = tmp_dir.path().join(&target_asset.name);
-        let mut tmp_archive = fs::File::create(&tmp_archive_path)?;
+        let mut tmp_archive = std::fs::File::create(&tmp_archive_path)?;
 
-        println(show_output, "Downloading...");
-        let mut download = Download::from_url(&target_asset.download_url);
+       
+        let mut download = crate::Download::from_url(&target_asset.download_url);
         let mut headers = api_headers(&self.auth_token());
         headers.insert(header::ACCEPT, "application/octet-stream".parse().unwrap());
         download.set_headers(headers);
@@ -229,40 +217,49 @@ pub trait ReleaseUpdate {
 
         download.download_to(&mut tmp_archive)?;
 
-        print_flush(show_output, "Extracting archive... ")?;
-        let bin_path_in_archive = self.bin_path_in_archive();
-        Extract::from_source(&tmp_archive_path)
+        println!("Download file:{:?}",&tmp_archive_path);
+       
+        self.before_update();
+    
+        if self.all_replce(){
+           let bin_path=self.bin_install_path();
+            crate::Extract::from_source(&tmp_archive_path).extract_dir(&bin_path)?;     
+            }
+        else
+        {
+            let bin_path_in_archive = self.bin_path_in_archive();
+            crate::Extract::from_source(&tmp_archive_path)
             .extract_file(&tmp_dir.path(), &bin_path_in_archive)?;
         let new_exe = tmp_dir.path().join(&bin_path_in_archive);
 
+        println!("Bin file:{:?}",&bin_path_in_archive);
         // Make executable
         #[cfg(not(windows))]
         {
-            let mut permissions = fs::metadata(&new_exe)?.permissions();
+            let mut permissions = std::fs::metadata(&new_exe)?.permissions();
             permissions.set_mode(0o755);
-            fs::set_permissions(&new_exe, permissions)?;
+            std::fs::set_permissions(&new_exe, permissions)?;
         }
 
-        println(show_output, "Done");
-
-        print_flush(show_output, "Replacing binary file... ")?;
+       
         let tmp_file = tmp_dir.path().join(&format!("__{}_backup", bin_name));
-        self.before_update();
-        Move::from_source(&new_exe)
+
+        crate::Move::from_source(&new_exe)
             .replace_using_temp(&tmp_file)
             .to_dest(&bin_install_path, self.all_replce())?;
 
+      
+        }
         self.after_update();
-        println(show_output, "Done");
-
-        Ok(UpdateStatus::Updated(release))
-    }
+ 
+        Ok(crate::update::UpdateStatus::Updated(release))
+}
 }
 
 // Print out message based on provided flag and flush the output buffer
 fn print_flush(show_output: bool, msg: &str) -> Result<()> {
     if show_output {
-        print_flush!("{}", msg);
+        println!("{}", msg);
     }
     Ok(())
 }

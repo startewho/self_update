@@ -31,7 +31,7 @@ macro_rules! print_flush {
     };
     ($literal:expr, $($arg:expr),*) => {
         print!($literal, $($arg),*);
-        ::std::io::Write::flush(&mut ::std::io::stdout())?;
+        std::io::Write::flush(&mut ::std::io::stdout())?;
     }
 }
 

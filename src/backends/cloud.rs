@@ -1,25 +1,22 @@
 /*!
-GitHub releases
+Cloud releases
 */
+
+
 use std::env::{self, consts::EXE_SUFFIX};
 use std::path::{Path, PathBuf};
-
+use std::process::Command;
 use indicatif::ProgressStyle;
 use reqwest::{self, header};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    errors::*,
-    get_target,
-    update::{Release, ReleaseAsset, ReleaseUpdate},
-};
+use crate::{errors::*, get_target, update::{Release, ReleaseAsset, ReleaseUpdate}};
 
-impl Release {
-    fn from_cloud(soft: &Soft) -> Result<Release> {
+    fn from_cloud(soft: &Soft,root_url:&str) -> Result<Release> {
         let mut assets = Vec::new();
         assets.push(ReleaseAsset {
             name: soft.name.clone().unwrap().into(),
-            download_url: String::from(format!("/api/soft/download?id={}", soft.id)),
+            download_url: String::from(format!("{}/api/binaryfile/download?id={}", root_url,soft.binary_id)),
         });
         Ok(Release {
             name: soft.name.clone().unwrap().into(),
@@ -29,7 +26,7 @@ impl Release {
             assets: assets,
         })
     }
-}
+
 
 /// `ReleaseList` Builder
 
@@ -45,6 +42,7 @@ pub struct NetResponse<T> {
 #[serde(rename_all = "camelCase")]
 pub struct Soft {
     id: i64,
+    binary_id:i64,
     name: Option<String>,
     hash: Option<String>,
     version: Option<String>,
@@ -134,7 +132,7 @@ impl ReleaseList {
             "{}/api/soft/getlist?name={}",
             self.custom_url
                 .as_ref()
-                .unwrap_or(&"https://api.github.com".to_string()),
+                .unwrap_or(&"http:127.0.0.1".to_string()),
             self.name.as_ref().unwrap_or(&"Agent".to_string())
         );
 
@@ -167,7 +165,7 @@ impl ReleaseList {
             return json
                 .content
                 .iter()
-                .map(|s| Release::from_cloud(s))
+                .map(|s| from_cloud(s,&self.custom_url.as_ref().unwrap()))
                 .collect::<Result<Vec<Release>>>();
         }
         bail!(Error::Release, "Not found Release")
@@ -202,6 +200,11 @@ impl UpdateBuilder {
     }
     pub fn name(&mut self, name: &str) -> &mut Self {
         self.name = Some(name.to_owned());
+        self
+    }
+
+    pub fn custom_url(&mut self, url: &str) -> &mut Self {
+        self.custom_url = Some(url.to_owned());
         self
     }
 
@@ -399,13 +402,10 @@ impl ReleaseUpdate for Update {
     fn get_release_version(&self, ver: &str) -> Result<Release> {
         set_ssl_vars!();
         let api_url = format!(
-            "{}/api/soft/getlist?name={}&version={}",
+            "{}/api/soft/getlist?name=Agent",
             self.custom_url
                 .as_ref()
-                .unwrap_or(&"http://127.0.0.1:5000".to_string()),
-            self.name,
-            ver
-        );
+                .unwrap_or(&"http://127.0.0.1:5000".to_string()));
 
         let resp = reqwest::blocking::Client::new()
             .get(&api_url)
@@ -421,7 +421,7 @@ impl ReleaseUpdate for Update {
         }
         let json = resp.json::<NetResponse<Vec<Soft>>>()?;
         if json.is_success && (json.content.len() > 0) {
-            Ok(Release::from_cloud(&json.content[0])?)
+            Ok(from_cloud(&json.content[0],&self.custom_url.as_ref().unwrap()).unwrap())
         } else {
             bail!(Error::Release, "can not get Last relesae",)
         }
@@ -455,16 +455,57 @@ impl ReleaseUpdate for Update {
         self.show_download_progress
     }
 
-    fn all_replce(&self) -> bool {
-        return true;
-    }
-
     fn show_output(&self) -> bool {
         self.show_output
     }
 
     fn no_confirm(&self) -> bool {
         self.no_confirm
+    }
+
+    fn idty_target_platform(&self) -> bool {
+        return false;
+    }
+
+    fn all_replce(&self) -> bool {
+        return true;
+    }
+
+    /// action before the update start
+    fn before_update(&self) -> () {
+      
+        let output = if cfg!(target_os = "windows") {
+            Command::new("cmd")
+                .args(&["/C", "sc stop CloudAgent"])
+                .output()
+                .expect("failed to execute process")
+        } else {
+            Command::new("sh")
+                .arg("-c")
+                .arg("sv stop CloudAgent")
+                .output()
+                .expect("failed to execute process")
+        };
+        info!("Before update:{:?} {}",self.bin_install_path(), output.status);
+    }
+
+    ///action after the update have finished
+    fn after_update(&self) -> () {
+        
+        let output = if cfg!(target_os = "windows") {
+            Command::new("cmd")
+                .args(&["/C", "sc start CloudAgent"])
+                .output()
+                .expect("failed to execute process")
+        } else {
+            Command::new("sh")
+                .arg("-c")
+                .arg("sv stop CloudAgent")
+                .output()
+                .expect("failed to execute process")
+        };
+        info!("After update:{:?} {}",self.bin_install_path(), output.status);
+       
     }
 
     fn progress_style(&self) -> Option<ProgressStyle> {
@@ -475,32 +516,12 @@ impl ReleaseUpdate for Update {
         self.auth_token.clone()
     }
 
-    fn idty_target_platform(&self) -> bool {
-        return false;
+    fn update(&self) -> Result<crate::Status> {
+        let current_version = self.current_version();
+        self.update_extended()
+            .map(|s| s.into_status(current_version))
     }
 
-    /// action before the update start
-    fn before_update(&self) -> () {
-        use std::process::Command;
-
-        let output = if cfg!(target_os = "windows") {
-            Command::new("cmd")
-                .args(&["/C", "sv stop CloudWeb"])
-                .output()
-                .expect("failed to execute process")
-        } else {
-            Command::new("sh")
-                .arg("-c")
-                .arg("sv stop CloudWeb")
-                .output()
-                .expect("failed to execute process")
-        };
-
-        let hello = output.stdout;
-    }
-
-    ///action after the update have finished
-    fn after_update(&self) -> () {}
 }
 
 impl Default for UpdateBuilder {

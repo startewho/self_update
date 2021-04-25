@@ -11,6 +11,7 @@ authors = ["James Kominick <james@kominick.com>"]
 exclude = ["/ci/*", ".travis.yml", "appveyor.yml"]
 edition = "2018"
 
+
 [dependencies]
 fs_extra = "1.2.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -19,7 +20,7 @@ tempfile = "3"
 flate2 = { version = "1", optional = true }
 tar = { version = "0.4", optional = true }
 semver = "0.11"
-zip = { version = "0.5", default-features = false, features = ["time"], optional = true }
+zip = { version = "0.5", default-features = true, features = ["time"], optional = true }
 either = { version = "1", optional = true }
 reqwest = { version = "0.11", default-features = false, features = ["blocking", "json"] }
 hyper = "0.14"
@@ -27,9 +28,10 @@ indicatif = "0.15"
 quick-xml = "0.20"
 regex = "1"
 log = "0.4"
+simplelog = "^0.10.0"
 
 [features]
-default = ["reqwest/default-tls"]
+default = ["reqwest/default-tls","archive-zip"]
 archive-zip = ["zip"]
 compression-zip-bzip2 = ["zip/bzip2"] #
 compression-zip-deflate = ["zip/deflate"] #

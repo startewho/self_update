@@ -25,12 +25,12 @@ fn run() -> Result<(), Box<dyn ::std::error::Error>> {
     let file= fs::read("setting.json")?;
     let setting:Setting= serde_json::from_slice(&file)?;
     let api_root=setting.api_root.unwrap_or("http://106.14.207.124".into());
-    let path=setting.install_path.unwrap_or("D:\\Server".into());
+    let path=setting.install_path.unwrap_or("D:\\Server\\CloudAgent".into());
     let bin_path=Path::new(&path);
     if !bin_path.is_dir()
     {
         info!("Create Dir:{:?}",&bin_path);
-        fs::create_dir(&bin_path)?;
+        fs::create_dir_all(&bin_path)?;
     }
     info!("Update Dir:{:?}",&bin_path);
     let status = self_update::backends::cloud::Update::configure()
@@ -56,15 +56,18 @@ fn run() -> Result<(), Box<dyn ::std::error::Error>> {
     Ok(())
 }
 
-pub fn main() {
+pub fn main()->std::io::Result<()> {
+    use std::env;
+    let path =  env::current_dir()?.join("info.log");
     CombinedLogger::init(
         vec![
             TermLogger::new(LevelFilter::Warn, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
-            WriteLogger::new(LevelFilter::Info, Config::default(), File::create("info.log").unwrap()),
+            WriteLogger::new(LevelFilter::Info, Config::default(), File::create(&path).unwrap()),
         ]
     ).unwrap();
     if let Err(e) = run() {
         println!("[ERROR] {}", e);
         ::std::process::exit(1);
     }
+    Ok(())
 }

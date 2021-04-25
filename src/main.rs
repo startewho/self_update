@@ -58,7 +58,7 @@ fn run() -> Result<(), Box<dyn ::std::error::Error>> {
 
 pub fn main()->std::io::Result<()> {
     use std::env;
-    let path =  env::current_dir()?.join("info.log");
+    let path =  env::current_exe()?.parent().unwrap().join("info.log");
     CombinedLogger::init(
         vec![
             TermLogger::new(LevelFilter::Warn, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),

@@ -2,5 +2,6 @@
     "apiRoot":"http://106.14.207.124",
     "installPath":"D:\\Server\\CloudAgent\\",
     "installBin":"CloudAgent.exe",
-    "retryTime":3
+    "retryTime":3,
+    "ignoreVerCompare":false
 }

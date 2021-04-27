@@ -102,6 +102,11 @@ pub trait ReleaseUpdate {
     /// Flag indicating if process informative messages shall be output
     fn show_output(&self) -> bool;
 
+    // Flag indicating whether update when target version is heigher than current,default is false
+    fn ignore_ver_compare(&self) -> bool{
+        return  false;
+    }
+
     /// Flag indicating if the user shouldn't be prompted to confirm an update
     fn no_confirm(&self) -> bool;
 
@@ -140,26 +145,27 @@ pub trait ReleaseUpdate {
         let current_version = self.current_version();
         info!("Current version:{}", &current_version);
         let target = self.target();
-        let show_output = self.show_output();
-
+       
         let release = match self.target_version() {
             None => {
                 let release = self.get_latest_release()?;
                 {
-                    if !crate::version::bump_is_greater(&current_version, &release.version)? {
-                        return Ok(crate::update::UpdateStatus::UpToDate);
+                    if self.ignore_ver_compare()
+                    {
+                        info!("Ignore version Compare,target version:{} ", &release.version);
+                        release
                     }
-
-                    let qualifier = if crate::version::bump_is_compatible(
-                        &current_version,
-                        &release.version,
-                    )? {
-                        ""
-                    } else {
-                        "*NOT* "
-                    };
+                    else
+                    {
+                        if !crate::version::bump_is_greater(&current_version, &release.version)? {
+                            info!("Current version:{} is the latest version", &current_version);
+                            return Ok(crate::update::UpdateStatus::UpToDate);
+                        }
+                        info!("Target version:{} ", &release.version);
+                        release
+                    }                  
                 }
-                release
+                
             }
             Some(ref ver) => self.get_release_version(ver)?,
         };
@@ -199,10 +205,7 @@ pub trait ReleaseUpdate {
         let mut tmp_archive = std::fs::File::create(&tmp_archive_path)?;
 
         let mut download = crate::Download::from_url(&target_asset.download_url);
-        info!(
-            "Download version:{} ,url :{:?}",
-            &target_asset.name, &target_asset.download_url
-        );
+        info!("Download version:{} ,url :{:?}",&release.version, &target_asset.download_url);
         let mut headers = api_headers(&self.auth_token());
         headers.insert(header::ACCEPT, "application/octet-stream".parse().unwrap());
         download.set_headers(headers);
@@ -221,6 +224,7 @@ pub trait ReleaseUpdate {
         if self.all_replce() {
             let bin_path = self.bin_install_path();
             crate::Extract::from_source(&tmp_archive_path).extract_dir(&bin_path)?;
+            info!("Finish replace folder,from:{:?},to:{:?}", &tmp_archive_path,&bin_path);
         } else {
             let bin_path_in_archive = self.bin_path_in_archive();
             crate::Extract::from_source(&tmp_archive_path)

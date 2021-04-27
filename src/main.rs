@@ -2,6 +2,7 @@
 Example updating an executable to the latest version released via GitHub
 */
 
+
 // For the `cargo_crate_version!` macro
 #[macro_use]
 extern crate log;
@@ -10,19 +11,21 @@ use simplelog::*;
 extern crate self_update;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use std::{
-    fs::{self, *},
-    string,
-};
+use std::{fs::{self, File}};
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Default,Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(default)]
 pub struct Setting {
     api_root: Option<String>,
     install_path: Option<String>,
     install_bin: Option<String>,
     retry_time: u32,
+    ignore_ver_compare:bool,
 }
+
+
+
 
 fn bin_ver(bin: &Path) -> Option<String> {
     use std::process::*;
@@ -54,9 +57,8 @@ fn run() -> Result<(), Box<dyn ::std::error::Error>> {
     let file = fs::read("setting.json")?;
     let setting: Setting = serde_json::from_slice(&file)?;
     let api_root = setting.api_root.unwrap_or("http://106.14.207.124".into());
-    let path = setting
-        .install_path
-        .unwrap_or("D:\\Server\\CloudAgent".into());
+    let path = setting.install_path.unwrap_or("D:\\Server\\CloudAgent".into());
+    let ignore_ver=setting.ignore_ver_compare;
     let bin_name = setting.install_bin.unwrap_or("CloudAgent.exe".into());
     let bin_dir = Path::new(&path);
     if !bin_dir.is_dir() {
@@ -71,6 +73,7 @@ fn run() -> Result<(), Box<dyn ::std::error::Error>> {
         .custom_url(&api_root)
         .bin_name(&bin_name)
         .no_confirm(true)
+        .ignore_ver_compare(ignore_ver)
         .show_download_progress(true)
         .bin_install_path(&bin_dir)
         //.target_version_tag("v9.9.10")
@@ -85,13 +88,15 @@ fn run() -> Result<(), Box<dyn ::std::error::Error>> {
         .current_version(&ver)
         .build()?
         .update()?;
-    println!("Update status: `{}`!", status.version());
+    println!("Updated version: `{}`!", status.version());
     Ok(())
 }
 
 pub fn main() -> std::io::Result<()> {
     use std::env;
-    let path = env::current_exe()?.parent().unwrap().join("info.log");
+    use std::fs::OpenOptions;
+    
+    let path = env::current_exe()?.parent().unwrap().join("log.log");
 
     let mut build = ConfigBuilder::new();
     let config = build.set_time_to_local(true).build();
@@ -106,7 +111,7 @@ pub fn main() -> std::io::Result<()> {
         WriteLogger::new(
             LevelFilter::Info,
             config.clone(),
-            File::create(&path).unwrap(),
+            OpenOptions::new().read(true).write(true).append(true).create(true).open(&path).unwrap()         
         ),
     ])
     .unwrap();

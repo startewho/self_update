@@ -4,7 +4,6 @@ Collection of modules supporting various release distribution backends
 
 pub mod cloud;
 
-
 /// Search for the first "rel" link-header uri in a full link header string.
 /// Seems like reqwest/hyper threw away their link-header parser implementation...
 ///

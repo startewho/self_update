@@ -8,8 +8,6 @@ use std::path::PathBuf;
 
 use crate::{confirm, errors::*, version, Download, Extract, Move, Status};
 
-
-
 /// Release asset information
 #[derive(Clone, Debug, Default)]
 pub struct ReleaseAsset {
@@ -132,7 +130,7 @@ pub trait ReleaseUpdate {
     /// confirmation from the user
     fn update(&self) -> Result<Status> {
         let current_version = self.current_version();
-        
+
         self.update_extended()
             .map(|s| s.into_status(current_version))
     }
@@ -140,34 +138,30 @@ pub trait ReleaseUpdate {
     /// Same as `update`, but returns `UpdateStatus`.
     fn update_extended(&self) -> Result<UpdateStatus> {
         let current_version = self.current_version();
+        info!("Current version:{}", &current_version);
         let target = self.target();
         let show_output = self.show_output();
-    
+
         let release = match self.target_version() {
             None => {
-            
                 let release = self.get_latest_release()?;
                 {
-                    
                     if !crate::version::bump_is_greater(&current_version, &release.version)? {
                         return Ok(crate::update::UpdateStatus::UpToDate);
                     }
 
-                   
-                    let qualifier =
-                        if crate::version::bump_is_compatible(&current_version, &release.version)? {
-                            ""
-                        } else {
-                            "*NOT* "
-                        };
-                 
+                    let qualifier = if crate::version::bump_is_compatible(
+                        &current_version,
+                        &release.version,
+                    )? {
+                        ""
+                    } else {
+                        "*NOT* "
+                    };
                 }
                 release
             }
-            Some(ref ver) => {
-              
-                self.get_release_version(ver)?
-            }
+            Some(ref ver) => self.get_release_version(ver)?,
         };
         let target_asset: ReleaseAsset;
         if self.idty_target_platform() {
@@ -204,8 +198,11 @@ pub trait ReleaseUpdate {
         let tmp_archive_path = tmp_dir.path().join(&target_asset.name);
         let mut tmp_archive = std::fs::File::create(&tmp_archive_path)?;
 
-       
         let mut download = crate::Download::from_url(&target_asset.download_url);
+        info!(
+            "Download version:{} ,url :{:?}",
+            &target_asset.name, &target_asset.download_url
+        );
         let mut headers = api_headers(&self.auth_token());
         headers.insert(header::ACCEPT, "application/octet-stream".parse().unwrap());
         download.set_headers(headers);
@@ -217,43 +214,38 @@ pub trait ReleaseUpdate {
 
         download.download_to(&mut tmp_archive)?;
 
-        println!("Download file:{:?}",&tmp_archive_path);
-       
+        info!("Download file path:{:?}", &tmp_archive_path);
+
         self.before_update();
-    
-        if self.all_replce(){
-           let bin_path=self.bin_install_path();
-            crate::Extract::from_source(&tmp_archive_path).extract_dir(&bin_path)?;     
-            }
-        else
-        {
+
+        if self.all_replce() {
+            let bin_path = self.bin_install_path();
+            crate::Extract::from_source(&tmp_archive_path).extract_dir(&bin_path)?;
+        } else {
             let bin_path_in_archive = self.bin_path_in_archive();
             crate::Extract::from_source(&tmp_archive_path)
-            .extract_file(&tmp_dir.path(), &bin_path_in_archive)?;
-        let new_exe = tmp_dir.path().join(&bin_path_in_archive);
+                .extract_file(&tmp_dir.path(), &bin_path_in_archive)?;
+            let new_exe = tmp_dir.path().join(&bin_path_in_archive);
 
-        println!("Bin file:{:?}",&bin_path_in_archive);
-        // Make executable
-        #[cfg(not(windows))]
-        {
-            let mut permissions = std::fs::metadata(&new_exe)?.permissions();
-            permissions.set_mode(0o755);
-            std::fs::set_permissions(&new_exe, permissions)?;
-        }
+            println!("Bin file:{:?}", &bin_path_in_archive);
+            // Make executable
+            #[cfg(not(windows))]
+            {
+                let mut permissions = std::fs::metadata(&new_exe)?.permissions();
+                permissions.set_mode(0o755);
+                std::fs::set_permissions(&new_exe, permissions)?;
+            }
 
-       
-        let tmp_file = tmp_dir.path().join(&format!("__{}_backup", bin_name));
+            let tmp_file = tmp_dir.path().join(&format!("__{}_backup", bin_name));
 
-        crate::Move::from_source(&new_exe)
-            .replace_using_temp(&tmp_file)
-            .to_dest(&bin_install_path, self.all_replce())?;
-
-      
+            crate::Move::from_source(&new_exe)
+                .replace_using_temp(&tmp_file)
+                .to_dest(&bin_install_path, self.all_replce())?;
         }
         self.after_update();
- 
+
         Ok(crate::update::UpdateStatus::Updated(release))
-}
+    }
 }
 
 // Print out message based on provided flag and flush the output buffer

@@ -356,7 +356,6 @@ impl<'a> Extract<'a> {
         source
     }
 
-  
     /// Extract an entire source archive into a specified path. If the source is a single compressed
     /// file and not an archive, it will be extracted into a file with the same name inside of
     /// `into_dir`.
@@ -428,7 +427,7 @@ impl<'a> Extract<'a> {
         Ok(())
     }
 
-    pub fn extract_dir(&self,dir: &path::Path)->Result<()>{
+    pub fn extract_dir(&self, dir: &path::Path) -> Result<()> {
         let source = fs::File::open(self.source)?;
         let archive = match self.archive {
             Some(archive) => archive,
@@ -440,19 +439,15 @@ impl<'a> Extract<'a> {
                 extract_into_plain_or_tar(source, compression)?;
             }
             #[cfg(not(feature = "archive-tar"))]
-            ArchiveKind::Plain(compression) => {
-                
-            }
+            ArchiveKind::Plain(compression) => {}
             #[cfg(feature = "archive-zip")]
             ArchiveKind::Zip => {
                 let mut archive = zip::ZipArchive::new(source)?;
                 archive.extract(dir)?;
-               
             }
         };
         Ok(())
     }
-
 
     /// Extract a single file from a source and save to a file of the same name in `into_dir`.
     /// If the source is a single compressed file, it will be saved with the name `file_to_extract`

@@ -3,32 +3,34 @@ Example updating an executable to the latest version released via GitHub
 */
 
 // For the `cargo_crate_version!` macro
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 extern crate simplelog;
 use simplelog::*;
 extern crate self_update;
-use std::{fs::{self,*}, string};
-use std::path::Path;
 use serde::{Deserialize, Serialize};
-
+use std::path::Path;
+use std::{
+    fs::{self, *},
+    string,
+};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Setting {
-    api_root:Option<String>,
-    install_path:Option<String>,
-    install_bin:Option<String>,
-    retry_time:u32,
+    api_root: Option<String>,
+    install_path: Option<String>,
+    install_bin: Option<String>,
+    retry_time: u32,
 }
 
-fn bin_ver(bin:&Path)->Option<String>{
+fn bin_ver(bin: &Path) -> Option<String> {
     use std::process::*;
     let output = if cfg!(target_os = "windows") {
         Command::new(bin)
             .args(&["--version"])
             .output()
             .expect("failed to execute process")
-
     } else {
         Command::new(bin)
             .arg("--version")
@@ -38,38 +40,36 @@ fn bin_ver(bin:&Path)->Option<String>{
     };
     use regex::Regex;
     let re = Regex::new(r"\d+\S+").unwrap();
-    let _str=String::from_utf8(output.stderr).unwrap();
-    
-   let cap= re.captures(&_str).unwrap();
-   if cap.len()>0
-   {
-    Some(cap.get(0).unwrap().as_str().into())
-   }
-   else{
-       None
-   }
-    
+    let _str = String::from_utf8(output.stderr).unwrap();
+
+    let cap = re.captures(&_str).unwrap();
+    if cap.len() > 0 {
+        Some(cap.get(0).unwrap().as_str().into())
+    } else {
+        None
+    }
 }
 
 fn run() -> Result<(), Box<dyn ::std::error::Error>> {
-    let file= fs::read("setting.json")?;
-    let setting:Setting= serde_json::from_slice(&file)?;
-    let api_root=setting.api_root.unwrap_or("http://106.14.207.124".into());
-    let path=setting.install_path.unwrap_or("D:\\Server\\CloudAgent".into());
-    let bin_name=setting.install_bin.unwrap_or("CloudAgent.exe".into());
-    let bin_dir=Path::new(&path);
-    if !bin_dir.is_dir()
-    {
-        info!("Create Dir:{:?}",&bin_dir);
+    let file = fs::read("setting.json")?;
+    let setting: Setting = serde_json::from_slice(&file)?;
+    let api_root = setting.api_root.unwrap_or("http://106.14.207.124".into());
+    let path = setting
+        .install_path
+        .unwrap_or("D:\\Server\\CloudAgent".into());
+    let bin_name = setting.install_bin.unwrap_or("CloudAgent.exe".into());
+    let bin_dir = Path::new(&path);
+    if !bin_dir.is_dir() {
+        info!("Create Dir:{:?}", &bin_dir);
         fs::create_dir_all(&bin_dir)?;
     }
-    info!("Update Dir:{:?}",&bin_dir);
-    let bin_path=bin_dir.join(bin_name);
-    let ver=bin_ver(&bin_path).unwrap();
+    info!("Update Dir:{:?}", &bin_dir);
+    let bin_path = bin_dir.join(&bin_name);
+    let ver = bin_ver(&bin_path).unwrap();
     let status = self_update::backends::cloud::Update::configure()
         .name("Agent")
         .custom_url(&api_root)
-        .bin_name("CloudAgent")
+        .bin_name(&bin_name)
         .no_confirm(true)
         .show_download_progress(true)
         .bin_install_path(&bin_dir)
@@ -89,20 +89,28 @@ fn run() -> Result<(), Box<dyn ::std::error::Error>> {
     Ok(())
 }
 
-pub fn main()->std::io::Result<()> {
+pub fn main() -> std::io::Result<()> {
     use std::env;
-    let path =  env::current_exe()?.parent().unwrap().join("info.log");
-  
-    let mut build=ConfigBuilder::new();
-    let  config=build.set_time_to_local(true).build();
+    let path = env::current_exe()?.parent().unwrap().join("info.log");
 
-    CombinedLogger::init(
-        vec![
-            TermLogger::new(LevelFilter::Warn, config.clone(), TerminalMode::Mixed, ColorChoice::Auto),
-            WriteLogger::new(LevelFilter::Info, config.clone(), File::create(&path).unwrap()),
-        ]
-    ).unwrap();
-    
+    let mut build = ConfigBuilder::new();
+    let config = build.set_time_to_local(true).build();
+
+    CombinedLogger::init(vec![
+        TermLogger::new(
+            LevelFilter::Warn,
+            config.clone(),
+            TerminalMode::Mixed,
+            ColorChoice::Auto,
+        ),
+        WriteLogger::new(
+            LevelFilter::Info,
+            config.clone(),
+            File::create(&path).unwrap(),
+        ),
+    ])
+    .unwrap();
+
     if let Err(e) = run() {
         error!("[ERROR] {:?}", e);
         ::std::process::exit(1);

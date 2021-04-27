@@ -2,7 +2,6 @@
 Example updating an executable to the latest version released via GitHub
 */
 
-
 // For the `cargo_crate_version!` macro
 #[macro_use]
 extern crate log;
@@ -10,10 +9,10 @@ extern crate simplelog;
 use simplelog::*;
 extern crate self_update;
 use serde::{Deserialize, Serialize};
+use std::fs::{self, File};
 use std::path::Path;
-use std::{fs::{self, File}};
 
-#[derive(Default,Clone, Debug, Deserialize, Serialize)]
+#[derive(Default, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[serde(default)]
 pub struct Setting {
@@ -21,11 +20,8 @@ pub struct Setting {
     install_path: Option<String>,
     install_bin: Option<String>,
     retry_time: u32,
-    ignore_ver_compare:bool,
+    ignore_ver_compare: bool,
 }
-
-
-
 
 fn bin_ver(bin: &Path) -> Option<String> {
     use std::process::*;
@@ -57,8 +53,10 @@ fn run() -> Result<(), Box<dyn ::std::error::Error>> {
     let file = fs::read("setting.json")?;
     let setting: Setting = serde_json::from_slice(&file)?;
     let api_root = setting.api_root.unwrap_or("http://106.14.207.124".into());
-    let path = setting.install_path.unwrap_or("D:\\Server\\CloudAgent".into());
-    let ignore_ver=setting.ignore_ver_compare;
+    let path = setting
+        .install_path
+        .unwrap_or("D:\\Server\\CloudAgent".into());
+    let ignore_ver = setting.ignore_ver_compare;
     let bin_name = setting.install_bin.unwrap_or("CloudAgent.exe".into());
     let bin_dir = Path::new(&path);
     if !bin_dir.is_dir() {
@@ -95,7 +93,7 @@ fn run() -> Result<(), Box<dyn ::std::error::Error>> {
 pub fn main() -> std::io::Result<()> {
     use std::env;
     use std::fs::OpenOptions;
-    
+
     let path = env::current_exe()?.parent().unwrap().join("log.log");
 
     let mut build = ConfigBuilder::new();
@@ -111,7 +109,13 @@ pub fn main() -> std::io::Result<()> {
         WriteLogger::new(
             LevelFilter::Info,
             config.clone(),
-            OpenOptions::new().read(true).write(true).append(true).create(true).open(&path).unwrap()         
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .append(true)
+                .create(true)
+                .open(&path)
+                .unwrap(),
         ),
     ])
     .unwrap();

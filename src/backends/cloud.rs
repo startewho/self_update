@@ -190,7 +190,7 @@ pub struct UpdateBuilder {
     show_download_progress: bool,
     show_output: bool,
     no_confirm: bool,
-    ignore_ver_compare:bool,
+    ignore_ver_compare: bool,
     current_version: Option<String>,
     target_version: Option<String>,
     progress_style: Option<ProgressStyle>,
@@ -213,8 +213,8 @@ impl UpdateBuilder {
         self
     }
 
-     /// Set the update builder's ignore ver compare.
-     pub fn ignore_ver_compare(&mut self, ignore_ver_compare: bool)->&mut Self {
+    /// Set the update builder's ignore ver compare.
+    pub fn ignore_ver_compare(&mut self, ignore_ver_compare: bool) -> &mut Self {
         self.ignore_ver_compare = ignore_ver_compare;
         self
     }
@@ -375,13 +375,11 @@ impl UpdateBuilder {
             progress_style: self.progress_style.clone(),
             show_output: self.show_output,
             no_confirm: self.no_confirm,
-            ignore_ver_compare:self.ignore_ver_compare,
+            ignore_ver_compare: self.ignore_ver_compare,
             auth_token: self.auth_token.clone(),
             custom_url: self.custom_url.clone(),
         }))
     }
-
-   
 }
 
 /// Updates to a specified or latest release distributed via GitHub
@@ -395,7 +393,7 @@ pub struct Update {
     bin_install_path: PathBuf,
     bin_path_in_archive: PathBuf,
     show_download_progress: bool,
-    ignore_ver_compare:bool,
+    ignore_ver_compare: bool,
     show_output: bool,
     no_confirm: bool,
     progress_style: Option<ProgressStyle>,
@@ -471,8 +469,8 @@ impl ReleaseUpdate for Update {
     fn show_download_progress(&self) -> bool {
         self.show_download_progress
     }
-    fn ignore_ver_compare(&self) -> bool{
-        return  self.ignore_ver_compare;
+    fn ignore_ver_compare(&self) -> bool {
+        return self.ignore_ver_compare;
     }
 
     fn show_output(&self) -> bool {
@@ -545,11 +543,7 @@ impl ReleaseUpdate for Update {
         self.auth_token.clone()
     }
 
-    fn update(&self) -> Result<crate::Status> {
-        let current_version = self.current_version();
-        self.update_extended()
-            .map(|s| s.into_status(current_version))
-    }
+   
 }
 
 impl Default for UpdateBuilder {
@@ -562,7 +556,7 @@ impl Default for UpdateBuilder {
             bin_path_in_archive: None,
             show_download_progress: false,
             show_output: true,
-            ignore_ver_compare:true,
+            ignore_ver_compare: true,
             no_confirm: false,
             current_version: None,
             target_version: None,

@@ -55,7 +55,7 @@ fn bin_ver(bin: &Path) -> Option<String> {
 fn run() -> Result<(), Box<dyn ::std::error::Error>> {
     let file = fs::read("setting.json")?;
     let setting: Setting = serde_json::from_slice(&file)?;
-    let api_root = setting.api_root.unwrap_or("http://106.14.207.124".into());
+    let api_root = setting.api_root.unwrap_or("http://127.0.0.1".into());
     let path = setting
         .install_path
         .unwrap_or("D:\\Server\\CloudAgent".into());

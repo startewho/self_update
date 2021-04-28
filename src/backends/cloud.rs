@@ -542,8 +542,6 @@ impl ReleaseUpdate for Update {
     fn auth_token(&self) -> Option<String> {
         self.auth_token.clone()
     }
-
-   
 }
 
 impl Default for UpdateBuilder {

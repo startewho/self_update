@@ -152,22 +152,20 @@ pub trait ReleaseUpdate {
         let release = match self.target_version() {
             None => {
                 let release = self.get_latest_release()?;
-                {
+
+                if !crate::version::bump_is_greater(&current_version, &release.version)? {
                     if self.ignore_ver_compare() {
                         info!(
                             "Ignore version Compare,target version:{} ",
                             &release.version
                         );
-                        release
                     } else {
-                        if !crate::version::bump_is_greater(&current_version, &release.version)? {
-                            info!("Current version:{} is the latest version", &current_version);
-                            return Ok(crate::update::UpdateStatus::UpToDate);
-                        }
-                        info!("Target version:{} ", &release.version);
-                        release
+                        info!("Current version:{} is the latest version", &current_version);
+                        return Ok(crate::update::UpdateStatus::UpToDate);
                     }
                 }
+
+                release
             }
             Some(ref ver) => self.get_release_version(ver)?,
         };
@@ -252,7 +250,7 @@ pub trait ReleaseUpdate {
                 .replace_using_temp(&tmp_file)
                 .to_dest(&bin_install_path, self.all_replce())?;
         }
-       
+
         Ok(crate::update::UpdateStatus::Updated(release))
     }
 }

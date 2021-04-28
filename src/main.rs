@@ -7,9 +7,9 @@ Example updating an executable to the latest version released via GitHub
 extern crate log;
 extern crate simplelog;
 use simplelog::*;
-extern crate self_update;
+extern crate update;
 use serde::{Deserialize, Serialize};
-use std::fs::{self, File};
+use std::fs::{self};
 use std::path::Path;
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize)]
@@ -39,9 +39,12 @@ fn bin_ver(bin: &Path) -> Option<String> {
     };
     use regex::Regex;
     let re = Regex::new(r"\d+\S+").unwrap();
-    let _str = String::from_utf8(output.stderr).unwrap();
-
-    let cap = re.captures(&_str).unwrap();
+    let msg = if output.status.success() {
+        String::from_utf8(output.stdout).unwrap()
+    } else {
+        String::from_utf8(output.stderr).unwrap()
+    };
+    let cap = re.captures(&msg).unwrap();
     if cap.len() > 0 {
         Some(cap.get(0).unwrap().as_str().into())
     } else {
@@ -66,7 +69,7 @@ fn run() -> Result<(), Box<dyn ::std::error::Error>> {
     info!("Update Dir:{:?}", &bin_dir);
     let bin_path = bin_dir.join(&bin_name);
     let ver = bin_ver(&bin_path).unwrap();
-    let status = self_update::backends::cloud::Update::configure()
+    let status = update::backends::cloud::Update::configure()
         .name("Agent")
         .custom_url(&api_root)
         .bin_name(&bin_name)
@@ -124,5 +127,8 @@ pub fn main() -> std::io::Result<()> {
         error!("[ERROR] {:?}", e);
         ::std::process::exit(1);
     }
+    let mut redkey = String::new();
+    std::io::stdin().read_line(&mut redkey)?;
+    info!("{}", redkey);
     Ok(())
 }

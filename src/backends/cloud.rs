@@ -196,6 +196,8 @@ pub struct UpdateBuilder {
     progress_style: Option<ProgressStyle>,
     auth_token: Option<String>,
     custom_url: Option<String>,
+    before_cmd:Option<String>,
+    after_cmd:Option<String>
 }
 
 impl UpdateBuilder {
@@ -210,6 +212,16 @@ impl UpdateBuilder {
 
     pub fn custom_url(&mut self, url: &str) -> &mut Self {
         self.custom_url = Some(url.to_owned());
+        self
+    }
+
+    pub fn before_cmd(&mut self, cmd: &str) -> &mut Self {
+        self.before_cmd = Some(cmd.to_owned());
+        self
+    }
+
+    pub fn after_cmd(&mut self, cmd: &str) -> &mut Self {
+        self.after_cmd = Some(cmd.to_owned());
         self
     }
 
@@ -378,6 +390,9 @@ impl UpdateBuilder {
             ignore_ver_compare: self.ignore_ver_compare,
             auth_token: self.auth_token.clone(),
             custom_url: self.custom_url.clone(),
+            before_cmd:self.before_cmd.clone(),
+            after_cmd:self.after_cmd.clone(),
+
         }))
     }
 }
@@ -399,6 +414,8 @@ pub struct Update {
     progress_style: Option<ProgressStyle>,
     auth_token: Option<String>,
     custom_url: Option<String>,
+    before_cmd:Option<String>,
+    after_cmd:Option<String>
 }
 impl Update {
     /// Initialize a new `Update` builder
@@ -491,15 +508,16 @@ impl ReleaseUpdate for Update {
 
     /// action before the update start
     fn before_update(&self) -> () {
+        let cmd=self.before_cmd.as_ref().unwrap();
         let output = if cfg!(target_os = "windows") {
             Command::new("cmd")
-                .args(&["/C", "sc stop CloudAgent"])
+                .args(&["/C", &cmd])
                 .output()
                 .expect("failed to execute process")
         } else {
             Command::new("sh")
                 .arg("-c")
-                .arg("sv stop CloudAgent")
+                .arg(&cmd)
                 .output()
                 .expect("failed to execute process")
         };
@@ -514,15 +532,16 @@ impl ReleaseUpdate for Update {
 
     ///action after the update have finished
     fn after_update(&self) -> () {
+        let cmd=self.after_cmd.as_ref().unwrap();
         let output = if cfg!(target_os = "windows") {
             Command::new("cmd")
-                .args(&["/C", "sc start CloudAgent"])
+                .args(&["/C", &cmd])
                 .output()
                 .expect("failed to execute process")
         } else {
             Command::new("sh")
                 .arg("-c")
-                .arg("sv stop CloudAgent")
+                .arg(&cmd)
                 .output()
                 .expect("failed to execute process")
         };
@@ -561,6 +580,8 @@ impl Default for UpdateBuilder {
             progress_style: None,
             auth_token: None,
             custom_url: None,
+            before_cmd:None,
+            after_cmd:None
         }
     }
 }

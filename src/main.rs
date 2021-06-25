@@ -21,6 +21,8 @@ pub struct Setting {
     install_bin: Option<String>,
     retry_time: u32,
     ignore_ver_compare: bool,
+    before_cmd:Option<String>,
+    after_cmd:Option<String>
 }
 
 fn bin_ver(bin: &Path) -> Option<String> {
@@ -77,6 +79,8 @@ fn run() -> Result<(), Box<dyn ::std::error::Error>> {
         .ignore_ver_compare(ignore_ver)
         .show_download_progress(true)
         .bin_install_path(&bin_dir)
+        .before_cmd(setting.before_cmd.as_ref().unwrap())
+        .after_cmd(setting.after_cmd.as_ref().unwrap())
         //.target_version_tag("v9.9.10")
         //.show_output(false)
         //.no_confirm(true)
